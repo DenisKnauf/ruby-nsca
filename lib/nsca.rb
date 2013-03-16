@@ -316,4 +316,16 @@ module NSCA
 			self
 		end
 	end
+
+	module Checks
+		class <<self
+			def perfdata cl, *params
+				const_set cl, NSCA::PerformanceData.create( *params)
+			end
+
+			def check cl, *params
+				const_set cl, NSCA::Check.create( *params)
+			end
+		end
+	end
 end
