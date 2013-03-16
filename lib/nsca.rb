@@ -323,8 +323,9 @@ module NSCA
 				const_set cl, NSCA::PerformanceData.create( *params)
 			end
 
-			def check cl, *params
-				const_set cl, NSCA::Check.create( *params)
+			def check cl, service, hostname, perfdatas
+				perfdatas.map! {|cl| cl.is_a?( Symbol) ? const_get( cl) : cl }
+				const_set cl, NSCA::Check.create( service, hostname, perfdatas)
 			end
 		end
 	end
