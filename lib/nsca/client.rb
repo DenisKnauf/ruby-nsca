@@ -1,9 +1,3 @@
-require 'socket'
-require 'enum'
-require 'timeout'
-require 'benchmark'
-require 'securerandom'
-
 module NSCA
 	class Client
 		class Connection

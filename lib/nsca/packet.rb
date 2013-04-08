@@ -1,9 +1,3 @@
-require 'socket'
-require 'enum'
-require 'timeout'
-require 'benchmark'
-require 'securerandom'
-
 module NSCA
 	class <<self
 		def xor key, msg, key_a = nil
@@ -68,18 +62,14 @@ module NSCA
 		# these line describes the data package:
 		# typedef struct data_packet_struct{
 		#   int16_t   packet_version;
-		#   /* xx means, 2 bytes without any data.
-		#    * i do not know, why but there are 2 extra bytes without any need and
-		#    * no where i can find information how these will be send,
-		#    * because these struct does not know it.
-		#    */
+		#   /* two padding bytes (because aligning): xx */
 		#   u_int32_t crc32_value;
 		#   u_int32_t timestamp;
 		#   int16_t   return_code;
 		#   char      host_name[MAX_HOSTNAME_LENGTH];
 		#   char      svc_description[MAX_DESCRIPTION_LENGTH];
 		#   char      plugin_output[MAX_PLUGINOUTPUT_LENGTH];
-		#   /* 2 extre xx, too. */
+		#   /* two extra padding-xx, too. */
 		# }data_packet;
 		PACK_STRING = "s> xx L> L> s> Z#{HOSTNAME_LENGTH} Z#{SERVICE_LENGTH} Z#{STATUS_LENGTH} xx"
 		PACK_LENGTH = 2+2+4+4+2+HOSTNAME_LENGTH+SERVICE_LENGTH+STATUS_LENGTH+2
