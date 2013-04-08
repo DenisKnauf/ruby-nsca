@@ -8,7 +8,7 @@ module NSCA
 		end
 		serv = NSCA::Server.new *args
 		sock = serv.accept
-		sock.fetch
+		sock.to_a
 	ensure
 		sock.close  if sock
 		serv.close  if serv

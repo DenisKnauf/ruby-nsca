@@ -19,14 +19,17 @@ class TestNSCA < Test::Unit::TestCase
 			T0 = TestChecks::T0
 			T1 = TestChecks::T1
 			T2 = TestChecks::T2
-			NSCA.destinations << NSCA::Client.new( 'localhost', 5667, password: 'abcdefghijkl')
-			NSCA.send TestChecks::T0.new( 1, "0123456789"*51+"AB")
 
-			return
+			checks = []
+			checks << TestChecks::T0.new( 1, "0123456789"*51+"AB")
+
 			pd1 = PD1.new 3
 			pd2 = PD2.new 0.9996
 			pd3 = PD3.new 2
-			NSCA.send TestChecks::T1.new( nil, "Should be OK", [pd1, pd2, pd3])
+			checks << TestChecks::T1.new( nil, "Should be OK", [pd1, pd2, pd3])
+
+			NSCA::destinations << NSCA::Client.new( 'localhost', 5667, password: 'abcdefghijkl')
+			NSCA::send *checks
 		end
 	end
 end

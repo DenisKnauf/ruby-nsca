@@ -109,7 +109,6 @@ module NSCA
 		def self.parse entry, key = nil, password = nil, no_verification_checks = nil
 			entry = NSCA::xor key, entry  if key
 			entry = NSCA::xor password, entry  if password
-			p entry: entry
 			ver, crc32sum, *x = entry.unpack( PACK_STRING)
 			raise VersionCheckFailed, "Packet version 3 expected. (recv: #{ver})" \
 				unless no_verification_checks or 3 == ver

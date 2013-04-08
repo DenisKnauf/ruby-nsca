@@ -6,6 +6,8 @@ require 'securerandom'
 
 module NSCA
 	class Server
+		include Enumerable
+
 		attr_reader :iv_key, :server, :packet_version, :password
 		def initialize *args
 			opts = {}
@@ -38,7 +40,16 @@ module NSCA
 		def accept() Connection.new @server.accept, self end
 		def close() @server.close end
 
+		def each &block
+			return Enumerator.new( self)  unless block_given?
+			while conn = accept
+				yield conn
+			end
+		end
+
 		class Connection
+			include Enumerable
+
 			def initialize socket, server
 				@socket, @server = socket, server
 				@iv_key, @password = server.iv_key, server.password
@@ -50,6 +61,13 @@ module NSCA
 			def fetch
 				data = read
 				@packet_version.parse data, @iv_key, @password  if data
+			end
+
+			def each &block
+				return Enumerator.new( self)  unless block_given?
+				while data = fetch
+					yield data
+				end
 			end
 
 			def eof?() @socket.eof? end
