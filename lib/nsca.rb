@@ -31,7 +31,7 @@ module NSCA
 	end
 end
 
-require 'lib/packet'
-require 'lib/server'
-require 'lib/client'
-require 'lib/check'
+require 'nsca/packet'
+require 'nsca/server'
+require 'nsca/client'
+require 'nsca/check'

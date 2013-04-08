@@ -19,7 +19,7 @@ class TestNSCA < Test::Unit::TestCase
 			T0 = TestChecks::T0
 			T1 = TestChecks::T1
 			T2 = TestChecks::T2
-			NSCA.destinations << NSCA::Client.new( 'localhost', 5667, 2)
+			NSCA.destinations << NSCA::Client.new( 'localhost', 5667, password: 'abcdefghijkl')
 			NSCA.send TestChecks::T0.new( 1, "0123456789"*51+"AB")
 
 			return

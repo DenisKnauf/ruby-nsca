@@ -1,8 +1,12 @@
+require 'pathname'
+$: << Pathname.new( __FILE__).dirname.join( '..', 'lib').to_s
+
 module NSCA
-	def self.dummy_server port, password = nil, key = nil
-		require 'pathname'
-		load Pathname.new( __FILE__).dirname.join( '..', 'lib', 'nsca.rb').to_s
-		serv = NSCA::Server.new port, password: password, key: key
+	def self.dummy_server *args
+		Dir[ Pathname.new( __FILE__).dirname.join( '..', 'lib', '**').to_s].each_entry do |l|
+			load l  if /\.rb$/ =~ l
+		end
+		serv = NSCA::Server.new *args
 		sock = serv.accept
 		sock.fetch
 	ensure

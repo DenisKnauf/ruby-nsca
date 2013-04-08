@@ -153,6 +153,21 @@ module NSCA
 				def unknown( status = nil, perfdatas = nil) new.unknown status, perfdatas end
 			end
 		end
+
+		class <<self
+			def create service, hostname = nil, perfdatas = nil
+				cl = Class.new Base
+				cl.init service, hostname, perfdatas
+				cl
+			end
+
+			def new service, hostname = nil, perfdatas = nil
+				cl = create service, hostname, perfdatas
+				clname = NSCA::Helper.class_name_gen service.to_s
+				self.const_set clname, cl  if clname
+				cl
+			end
+		end
 	end
 
 	module Checks

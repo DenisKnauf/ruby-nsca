@@ -48,7 +48,8 @@ module NSCA
 			end
 
 			def fetch
-				@packet_version.parse read, @iv_key, @password
+				data = read
+				@packet_version.parse data, @iv_key, @password  if data
 			end
 
 			def eof?() @socket.eof? end
