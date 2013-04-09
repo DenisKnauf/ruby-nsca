@@ -16,7 +16,7 @@ Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "nsca"
   gem.homepage = "http://github.com/DenisKnauf/nsca"
-  gem.license = "MIT"
+  gem.license = "LGPL-3"
   gem.summary = %Q{Nagios passive alerts with friendly API}
   gem.description = %Q{Create your alerts easily and send it to Nagios}
   gem.email = "Denis.Knauf@gmail.com"
