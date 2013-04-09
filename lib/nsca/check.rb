@@ -24,6 +24,8 @@ module NSCA
 					end
 					new m
 				end
+
+				def to_sym() label.to_sym end
 			end
 
 			attr_reader :value
@@ -94,12 +96,19 @@ module NSCA
 				@perfdatas
 			end
 
+			def perfdata_for label
+				if value.is_a? PerformanceData::Base
+					label
+				else
+					perfdata_label = perfdata_label.to_sym
+					cl = self.class.perfdatas[perfdata_label]
+					cl || PerformanceData::Base.new( perfdata_label)
+				end
+			end
+
 			def []= perfdata_label, value
 				return push value  if value.is_a? PerformanceData::Base
-				perfdata_label = perfdata_label.to_sym
-				cl = self.class.perfdatas[perfdata_label]
-				cl ||= PerformanceData::Base.new perfdata_label
-				@perfdatas[perfdata_label] = cl.new value
+				@perfdatas[perfdata_label] = perfdata_for( perfdata_label).new value
 			end
 
 			def text
@@ -109,7 +118,7 @@ module NSCA
 			end
 
 			def measure perfdata_label, &block
-				@perfdatas[perfdata_label.to_sym].measure &block
+				push perfdata_for( perfdata_label).measure( &block)
 			end
 			def send() NSCA::send self end
 
