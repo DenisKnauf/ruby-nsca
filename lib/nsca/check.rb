@@ -100,8 +100,8 @@ module NSCA
 				if label.is_a? PerformanceData::Base
 					label
 				else
-					perfdata_label = perfdata_label.to_sym
-					self.class.perfdatas[perfdata_label] || PerformanceData::Base.new( perfdata_label)
+					label = label.to_sym
+					self.class.perfdatas[label] || PerformanceData::Base.new( label)
 				end
 			end
 
