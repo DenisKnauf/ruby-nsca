@@ -63,7 +63,9 @@ module NSCA
 
 	module Check
 		class Base
-			attr_reader :perfdatas, :return_code, :status, :timestamp
+			attr_accessor :return_code, :status, :timestamp
+			attr_reader :perfdatas
+
 			def initialize return_code = nil, status = nil, perfdatas = nil
 				@perfdatas = {}
 				init return_code, status, perfdatas, timestamp || Time.now
