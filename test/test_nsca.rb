@@ -3,12 +3,12 @@ require 'helper'
 class TestNSCA < Test::Unit::TestCase
 	class TestChecks
 		extend NSCA::Checks
-		perfdata :PD1, :pd1_in_sec, :s, 10, 20, 0, 30
-		perfdata :PD2, :pd2_in_1, 1, 0.99, 0.98, 0, 1
-		perfdata :PD3, :pd3_count, :c, 3, 5, 0
-		check :T0, 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
-		check :T1, 'TestNSCA1', 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2]
-		check :T2, :TestNSCA2, 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2, PD3]
+		PD1 = perfdata :pd1_in_sec, :s, 10, 20, 0, 30
+		PD2 = perfdata :pd2_in_1, 1, 0.99, 0.98, 0, 1
+		PD3 = perfdata :pd3_count, :c, 3, 5, 0
+		T0 = check 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
+		T1 = check 'TestNSCA1', 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2]
+		T2 = check :TestNSCA2, 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2, PD3]
 	end
 
 	context 'our test server' do
