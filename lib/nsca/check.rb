@@ -97,12 +97,11 @@ module NSCA
 			end
 
 			def perfdata_for label
-				if value.is_a? PerformanceData::Base
+				if label.is_a? PerformanceData::Base
 					label
 				else
 					perfdata_label = perfdata_label.to_sym
-					cl = self.class.perfdatas[perfdata_label]
-					cl || PerformanceData::Base.new( perfdata_label)
+					self.class.perfdatas[perfdata_label] || PerformanceData::Base.new( perfdata_label)
 				end
 			end
 
