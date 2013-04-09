@@ -170,14 +170,14 @@ module NSCA
 		end
 
 		class <<self
-			def create service, hostname = nil, perfdatas = nil
+			def new service, hostname = nil, perfdatas = nil
 				cl = Class.new Base
 				cl.init service, hostname, perfdatas
 				cl
 			end
 
-			def new service, hostname = nil, perfdatas = nil
-				cl = create service, hostname, perfdatas
+			def create service, hostname = nil, perfdatas = nil
+				cl = new service, hostname, perfdatas
 				clname = NSCA::Helper.class_name_gen service.to_s
 				self.const_set clname, cl  if clname
 				cl
