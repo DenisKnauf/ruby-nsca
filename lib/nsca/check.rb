@@ -14,7 +14,7 @@ module NSCA
 				def measure &block
 					timeout ||= 0
 					exception = Class.new Timeout::Error
-					pd = perfdatas[perfdata_label]
+					pd = perfdatas[perfdata_label.to_sym]
 					timeout = pd.max
 					m = realtime do
 						begin
@@ -35,6 +35,7 @@ module NSCA
 			def min()  self.class.min  end
 			def max()  self.class.max  end
 			def to_s() "#{label}=#{value}#{unit},#{warn},#{crit},#{min},#{max}" end
+			def to_sym() self.class.label.to_sym end
 
 			def return_code
 				if @value.nil? then 3
@@ -71,17 +72,29 @@ module NSCA
 			def init return_code = nil, status = nil, perfdatas = nil, timestamp = nil
 				@return_code = return_code  if return_code
 				@status = status  if status
-				perfdatas.each &method( :[])  if perfdatas
+				case perfdatas
+				when Hash
+					perfdatas.each &method( :[])
+				when Array
+					push *perfdatas
+				end
 				@timestamp = timestamp  if timestamp
 				self
 			end
 
 			def [] perfdata_label
-				pd = @perfdatas[perfdata_label]
+				pd = @perfdatas[perfdata_label.to_sym]
 				pd && pd.value
 			end
 
+			def push *perfdatas
+				perfdatas.each {|perfdata| @perfdatas[perfdata.label] = perfdata }
+				@perfdatas
+			end
+
 			def []= perfdata_label, value
+				return push value  if value.is_a? PerformanceData::Base
+				perfdata_label = perfdata_label.to_sym
 				cl = self.class.perfdatas[perfdata_label]
 				cl ||= PerformanceData::Base.new perfdata_label
 				@perfdatas[perfdata_label] = cl.new value
@@ -89,11 +102,13 @@ module NSCA
 
 			def text
 				r = "#{status || ReturnCode.find(return_code)}"
-				r += " | #{perfdatas.map( &:to_s).join ' '}"  unless perfdatas.empty?
+				r += " | #{perfdatas.each_value.map( &:to_s).join ' '}"  unless perfdatas.empty?
 				r
 			end
 
-			def measure( perfdata_label, &block) @perfdatas[perfdata_label].measure &block end
+			def measure perfdata_label, &block
+				@perfdatas[perfdata_label.to_sym].measure &block
+			end
 			def send() NSCA::send self end
 
 			def ok status = nil, perfdatas = nil
@@ -141,7 +156,7 @@ module NSCA
 				attr_reader :service, :hostname, :perfdatas
 				def init service, hostname = nil, perfdatas = nil
 					@service, @hostname, @perfdatas = service, hostname || `hostname -f`, {}
-					perfdatas.each {|pd| @perfdatas[pd.label] = pd }
+					perfdatas.each {|pd| @perfdatas[pd.label.to_sym] = pd }
 					self
 				end
 
