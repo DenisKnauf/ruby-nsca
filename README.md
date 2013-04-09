@@ -16,7 +16,6 @@ TO DO AND DONE
 TODO
 ----
 
-* build packet with performance data
 * server side parsing of performance data
 * more documentations
 * mcrypt-support
@@ -30,6 +29,7 @@ DONE
 * server-API (recv from client)
 * check-API (describe checks and performance data)
 * fast usable API for sending checks
+* build packet with performance data
 
 Copyright
 =========

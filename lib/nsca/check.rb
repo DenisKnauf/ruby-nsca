@@ -186,12 +186,12 @@ module NSCA
 	end
 
 	module Checks
-		def perfdata( cl, *params) const_set cl, NSCA::PerformanceData.new( *params) end
+		def perfdata( *params) NSCA::PerformanceData.new( *params) end
 
-		def check cl, service, hostname, perfdatas = nil
+		def check service, hostname, perfdatas = nil
 			perfdatas ||= []
 			perfdatas.map! {|cl| cl.is_a?( Symbol) ? const_get( cl) : cl }
-			const_set cl, NSCA::Check.new( service, hostname, perfdatas)
+			NSCA::Check.new service, hostname, perfdatas
 		end
 	end
 end
