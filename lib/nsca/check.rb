@@ -14,7 +14,6 @@ module NSCA
 				def measure &block
 					timeout ||= 0
 					exception = Class.new Timeout::Error
-					pd = perfdatas[perfdata_label.to_sym]
 					timeout = pd.max
 					m = realtime do
 						begin
