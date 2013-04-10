@@ -44,7 +44,7 @@ module NSCA
 			def max()  self.class.max  end
 			def to_a() [label, value, unit, warn, crit, min, max] end
 			def to_s() "#{label}=#{value}#{unit},#{warn},#{crit},#{min},#{max}" end
-			def to_sym() self.class.label.to_sym end
+			def to_sym() self.class.to_sym end
 
 			def to_h
 				{label: @label, value: @value, unit: @unit, warn: @warn, crit: @crit, min: @min, max: @max}
