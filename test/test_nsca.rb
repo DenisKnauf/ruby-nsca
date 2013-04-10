@@ -1,35 +1,79 @@
 require 'helper'
+require 'dummy_server'
+require 'securerandom'
 
 class TestNSCA < Test::Unit::TestCase
-	class TestChecks
-		extend NSCA::Checks
-		PD1 = perfdata :pd1_in_sec, :s, 10, 20, 0, 30
-		PD2 = perfdata :pd2_in_1, 1, 0.99, 0.98, 0, 1
-		PD3 = perfdata :pd3_count, :c, 3, 5, 0
-		T0 = check 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
-		T1 = check 'TestNSCA1', 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2]
-		T2 = check :TestNSCA2, 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2, PD3]
+	context 'xor' do
+		should 'return a if a (random) will xored double with random key. (1000 rounds)' do
+			1000.times do
+				key_len = SecureRandom.random_number 1000
+				a_len = SecureRandom.random_number 1000
+				key = SecureRandom.random_bytes key_len
+				a = SecureRandom.random_bytes a_len
+				assert_equal a, NSCA.xor( key, NSCA.xor(key, a))
+			end
+		end
 	end
+end
 
-	context 'our test server' do
-		should 'receive data. NSCA-server should run on localhost 5777. if not, ignore this test. password=abcdefghijkl' do
-			PD1 = TestChecks::PD1
-			PD2 = TestChecks::PD2
-			PD3 = TestChecks::PD3
-			T0 = TestChecks::T0
-			T1 = TestChecks::T1
-			T2 = TestChecks::T2
+class TestNSCACommunication < Test::Unit::TestCase
+	Port = 5787
+
+	include NSCA::Checks
+
+	context "our dummy test server on localhost:#{Port} with random password" do
+		should 'receive data' do
+			password = SecureRandom.random_bytes
+			timestamp = Time.now
+
+			PD1 = perfdata :pd1_in_sec, :s, 10, 20, 0, 30
+			PD2 = perfdata :pd2_in_1, 1, 0.99, 0.98, 0, 1
+			PD3 = perfdata :pd3_count, :c, 3, 5, 0
+			T0 = check 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
+			T1 = check 'TestNSCA1', 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2]
+			T2 = check :TestNSCA2, 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2, PD3]
 
 			checks = []
-			checks << TestChecks::T0.new( 1, "0123456789"*51+"AB")
+			t0 = T0.new( 1, "0123456789"*51+"AB", nil, timestamp) # oversized service name
+			checks << t0
 
 			pd1 = PD1.new 3
 			pd2 = PD2.new 0.9996
 			pd3 = PD3.new 2
-			checks << TestChecks::T1.new( nil, "Should be OK", [pd1, pd2, pd3])
+			t1 = T1.new( nil, "Should be OK", [pd1, pd2, pd3], timestamp)
+			checks << t1
 
-			NSCA::destinations << NSCA::Client.new( 'localhost', 5667, password: 'abcdefghijkl')
+			NSCA::destinations.clear
+			NSCA::destinations << NSCA::Client.new( 'localhost', Port, password: password)
+
+			server = Thread.new { NSCA.dummy_server Port, password: password }
+			sleep 1 # server needs time to start...
 			NSCA::send *checks
+			pc0, pc1 = server.value
+
+			[[t0, pc0], [t1, pc1]].each do |(test, packet)|
+				assert_equal test.hostname, packet.hostname
+				assert_equal test.service, packet.service
+				assert_equal timestamp.to_i, packet.timestamp.to_i
+				assert_equal test.retcode, packet.return_code
+			end
+			# original with B, but B is char 512 and will be replaced by \0
+			assert_equal pc0.status, "0123456789"*51+"A"
+			assert_equal pc1.status, "Should be OK | pd1_in_sec=3s,10,20,0,30 pd2_in_1=0.99961,0.99,0.98,0,1 pd3_count=2c,3,5,0,"
+		end
+
+		should 'fail crc32 if wrong password' do
+			password = SecureRandom.random_bytes
+			timestamp = Time.now
+			T3 = check 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
+			NSCA::destinations.clear
+			NSCA::destinations << NSCA::Client.new( 'localhost', Port, password: password+'a')
+			server = Thread.new { NSCA.dummy_server Port, password: password }
+			sleep 1 # server needs time to start...
+			NSCA::send T3.new( 1, 'status', nil, timestamp)
+			assert_raise NSCA::Packet::CSC32CheckFailed do
+				server.join
+			end
 		end
 	end
 end
@@ -87,9 +131,45 @@ class TestNSCA::PerformanceData < Test::Unit::TestCase
 	end
 end
 
+class TestNSCA::Check < Test::Unit::TestCase
+	context 'Subclasses' do
+		should 'be created by NSCA::Check.create' do
+			CA = NSCA::Check.create 'a uniq name'
+			assert_same CA, NSCA::Check::A_uniq_name
+		end
+	end
 
-class TestNSCA::Client < Test::Unit::TestCase
-	should '' do
-		NSCA::Client
+	context 'No Subclasses' do
+		should 'be created by NSCA::Check.new' do
+			CB = NSCA::Check.new 'a uniq name, too'
+			assert_raise NameError, 'A class named NSCA::Check::A_uniq_name_too exists' do
+				CB == NSCA::Check::A_uniq_name_too
+			end
+		end
+	end
+
+	context 'Clones' do
+		should 'have old class as superclass' do
+			CC1 = NSCA::Check.new( 'a check which will be for cloning')
+			CC2 = CC1.clone
+			assert_equal CC2.superclass, CC1
+		end
+
+		should 'have the same data' do
+			CD1 = NSCA::Check.new 'a check for same data after cloning'
+			CD2 = CD1.clone
+			assert_equal CD2.to_a, CD2.to_a
+		end
+
+		should 'have the same data, except specific data' do
+			CE1 = NSCA::Check.new 'a check for same data after cloning again, but...'
+			CE2 = CE1.clone service: '... but the service will be changed.'
+			assert_not_equal CE1.service, CE2.service
+			assert_equal 'a check for same data after cloning again, but...', CE1.service
+			assert_equal '... but the service will be changed.', CE2.service
+			ce1_data, ce2_data = CE1.to_a, CE2.to_a
+			ce1_data[0] = ce2_data[0] = 'dummy'
+			assert_equal ce1_data, ce2_data
+		end
 	end
 end

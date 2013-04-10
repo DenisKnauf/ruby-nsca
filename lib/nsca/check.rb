@@ -6,13 +6,18 @@ module NSCA
 
 			class <<self
 				attr_reader :label, :unit, :warn, :crit, :min, :max
-				def init label, unit = nil, warn = nil, crit = nil, min = nil, max = nil
-					@label, @unit, @warn, @crit, @min, @max = label.to_s, unit, warn, crit, min, max
+				def init *args
+					a, o = args, args.last.is_a?( Hash) ? args.pop : {}
+					@label, @unit = a[0]||o[:label], a[1]||o[:unit]
+					@warn, @crit = a[2]||o[:warn], a[3]||o[:crit]
+					@min, @max = a[4]||o[:min], a[5]||o[:max]
+					raise ArgumentError, "Label expected"  unless @label
+					@label = @label.to_s
 					self
 				end
 
 				def measure &block
-					exception = Class.new Timeout::Error
+					exception = ::Class.new Timeout::Error
 					timeout = max
 					m = realtime do
 						begin
@@ -24,6 +29,9 @@ module NSCA
 				end
 
 				def to_sym() label.to_sym end
+				def to_h() {label: @label, unit: @unit, warn: @warn, crit: @crit, min: @min, max: @max } end
+				def to_a() [label, unit, warn, crit, min, max] end
+				def clone( opts = nil) ::Class.new( self).init opts ? to_h.merge( opts) : to_h end
 			end
 
 			attr_reader :value
@@ -34,8 +42,13 @@ module NSCA
 			def crit()  self.class.crit  end
 			def min()  self.class.min  end
 			def max()  self.class.max  end
+			def to_a() [label, value, unit, warn, crit, min, max] end
 			def to_s() "#{label}=#{value}#{unit},#{warn},#{crit},#{min},#{max}" end
 			def to_sym() self.class.label.to_sym end
+
+			def to_h
+				{label: @label, value: @value, unit: @unit, warn: @warn, crit: @crit, min: @min, max: @max}
+			end
 
 			def return_code
 				if @value.nil? then 3
@@ -47,13 +60,9 @@ module NSCA
 		end
 
 		class <<self
-			def new label, unit = nil, warn = nil, crit = nil, min = nil, max = nil
-				cl = Class.new Base
-				cl.init label, unit, warn, crit, min, max
-			end
-
-			def create label, unit = nil, warn = nil, crit = nil, min = nil, max = nil
-				cl = new label, unit, warn, crit, min, max
+			def new( *args) ::Class.new( Base).init *args end
+			def create label, *args
+				cl = new label, *args
 				clname = NSCA::Helper.class_name_gen label
 				self.const_set clname, cl  if clname
 				cl
@@ -66,7 +75,7 @@ module NSCA
 			attr_accessor :return_code, :status, :timestamp
 			attr_reader :perfdatas
 
-			def initialize return_code = nil, status = nil, perfdatas = nil
+			def initialize return_code = nil, status = nil, perfdatas = nil, timestamp = nil
 				@perfdatas = {}
 				init return_code, status, perfdatas, timestamp || Time.now
 			end
@@ -119,27 +128,12 @@ module NSCA
 			end
 			def send() NSCA::send self end
 
-			def ok status = nil, perfdatas = nil
-				init ReturnCode::OK, status, perfdatas
-				send
-			end
-
-			def warning status = nil, perfdatas = nil
-				init ReturnCode::WARNING, status, perfdatas
-				send
-			end
+			def ok( *args) init ReturnCode::OK, *args end
+			def warning( *args) init ReturnCode::WARNING, *args end
 			alias warn warning
-
-			def critical status = nil, perfdatas = nil
-				init ReturnCode::CRITICAL, status, perfdatas
-				send
-			end
+			def critical( *args) init ReturnCode::CRITICAL, *args end
 			alias crit critical
-
-			def unknown status = nil, perfdatas = nil
-				init ReturnCode::UNKNOWN, status, perfdatas
-				send
-			end
+			def unknown( *args) init ReturnCode::UNKNOWN, *args end
 
 			def determine_return_code
 				self.class.perfdatas.map do |label, pdc|
@@ -159,12 +153,19 @@ module NSCA
 
 			def service() self.class.service end
 			def hostname() self.class.hostname end
+			def to_a() [timestamp, retcode, hostname, service, text] end
+			def to_h
+				{timestamp: timestamp, return_code: retcode, hostname: hostname, server: service, status: text}
+			end
 
 			class <<self
 				attr_reader :service, :hostname, :perfdatas
-				def init service, hostname = nil, perfdatas = nil
-					@service, @hostname, @perfdatas = service, hostname || `hostname -f`, {}
-					perfdatas.each {|pd| @perfdatas[pd.label.to_sym] = pd }
+				def init *args
+					a, o = args, args.last.is_a?( Hash) ? args.pop : {}
+					service, hostname = nil, perfdatas = nil
+					@service, @hostname, @perfdatas = a[0]||o[:service], a[1]||o[:hostname]||`hostname`, {}
+					perfdatas = a[2]||o[:perfdatas]
+					perfdatas.each {|pd| @perfdatas[pd.to_sym] = pd }  if perfdatas
 					self
 				end
 
@@ -174,6 +175,11 @@ module NSCA
 				def critical( status = nil, perfdatas = nil) new.warning status, perfdatas end
 				alias crit critical
 				def unknown( status = nil, perfdatas = nil) new.unknown status, perfdatas end
+
+				def to_a() [service, hostname, perfdatas.dup] end
+				def to_h() {service: service, hostname: hostname, perfdatas: perfdatas.values} end
+				def to_sym() "#{hostname}|#{service}".to_sym end
+				def clone( opts = nil) ::Class.new( self).init opts ? to_h.merge( opts) : to_h end
 			end
 		end
 
