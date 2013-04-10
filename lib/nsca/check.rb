@@ -12,9 +12,8 @@ module NSCA
 				end
 
 				def measure &block
-					timeout ||= 0
 					exception = Class.new Timeout::Error
-					timeout = pd.max
+					timeout = max
 					m = realtime do
 						begin
 							timeout timeout, exception, &block
