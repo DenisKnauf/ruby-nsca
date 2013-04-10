@@ -1,5 +1,8 @@
 module NSCA
 	module PerformanceData
+		class TimeUnitExpected < Exception
+		end
+
 		class Base
 			extend Timeout
 			extend Benchmark
@@ -17,6 +20,11 @@ module NSCA
 				end
 
 				def measure &block
+					f = case unit.to_s.to_sym
+						when :s then 1
+						when :ms then 1000
+						else raise TimeUnitExpected, "Unit must be seconds (s) or miliseconds (ms) not (#{unit})"
+						end
 					exception = ::Class.new Timeout::Error
 					timeout = max
 					m = realtime do
@@ -25,7 +33,7 @@ module NSCA
 						rescue exception
 						end
 					end
-					new m
+					new f * m
 				end
 
 				def to_sym() label.to_sym end

@@ -113,8 +113,14 @@ class TestNSCA::PerformanceData < Test::Unit::TestCase
 
 	context 'Created NSCA::PerformanceData-subclasses' do
 		should 'be the same like returned' do
-			cl = NSCA::PerformanceData.create 'returned and subclass the same test'
-			assert cl == NSCA::PerformanceData::Returned_and_subclass_the_same_test, 'Classes are not the same.'
+			PA = NSCA::PerformanceData.create 'returned and subclass the same test'
+			assert_equal PA, NSCA::PerformanceData::Returned_and_subclass_the_same_test
+		end
+		should 'not exists, if #new used' do
+			pb = NSCA::PerformanceData.new 'no subclass'
+			assert_raise NameError do
+				NSCA::PerformanceData::No_subclass
+			end
 		end
 		should 'have a unit if given' do
 			assert :s == perfdata( 'have an unit test', :s).unit, "Not s as unit"
@@ -127,6 +133,37 @@ class TestNSCA::PerformanceData < Test::Unit::TestCase
 		end
 		should 'have not a warn thresh if not given' do
 			assert nil == perfdata( 'have not a warn test', nil, nil).warn, "Not nil as warn"
+		end
+	end
+
+	context 'Measure' do
+		should 'work with s' do
+			PC = perfdata 'something in seconds', :s
+			assert PC.measure { true }.is_a?( PC), 'can not be created?'
+		end
+
+		should 'work with ms' do
+			PD = perfdata 'something in mili seconds', :ms
+			assert PD.measure { true }.is_a?( PD), 'can not be created?'
+		end
+
+		should 'not work with something else' do
+			PE = perfdata 'something else than time', :c
+			assert_raise NSCA::PerformanceData::TimeUnitExpected do
+				PE.measure { true }
+			end
+		end
+
+		should 'measure something between 1s..3s if i sleep 2 seconds' do
+			PF = perfdata 'wait 2 seconds', :s
+			pf = PF.measure { sleep 2 }
+			assert (1..3).include?( pf.value), "Not in range 1s..3s: #{pf.value}s"
+		end
+
+		should 'measure something between 1000ms..3000ms if i sleep 2 seconds' do
+			PG = perfdata 'wait 2000 mili second', :ms
+			pf = PG.measure { sleep 2 }
+			assert (1000..3000).include?( pf.value), "Not in range 1000ms..3000ms: #{pf.value}ms"
 		end
 	end
 end
