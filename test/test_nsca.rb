@@ -169,6 +169,24 @@ class TestNSCA::PerformanceData < Test::Unit::TestCase
 end
 
 class TestNSCA::Check < Test::Unit::TestCase
+	context 'Data' do
+		should 'also be empty' do
+			CF = NSCA::Check.new 'empty data'
+			cf = CF.new
+			hostname = `hostname`.chomp
+			assert_equal [cf.timestamp, 3, hostname, 'empty data', 'UNKNOWN'], cf.to_a
+		end
+
+		should 'have default a timestamp. ~ -10s..10s' do
+			CG = NSCA::Check.new 'default timestamp'
+			cg = CG.new
+			now = Time.now
+			range = Time.at(now-10) .. Time.at(now+10)
+			assert range.begin <= cg.timestamp && cg.timestamp <= range.end,
+				"Not a valid timestamp ~now: #{cg.timestamp}"
+		end
+	end
+
 	context 'Subclasses' do
 		should 'be created by NSCA::Check.create' do
 			CA = NSCA::Check.create 'a uniq name'

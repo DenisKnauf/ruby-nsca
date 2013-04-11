@@ -126,7 +126,7 @@ module NSCA
 			end
 
 			def text
-				r = "#{status || ReturnCode.find(return_code)}"
+				r = "#{status || ReturnCode.find(retcode)}"
 				r += " | #{perfdatas.each_value.map( &:to_s).join ' '}"  unless perfdatas.empty?
 				r
 			end
@@ -171,7 +171,7 @@ module NSCA
 				def init *args
 					a, o = args, args.last.is_a?( Hash) ? args.pop : {}
 					service, hostname = nil, perfdatas = nil
-					@service, @hostname, @perfdatas = a[0]||o[:service], a[1]||o[:hostname]||`hostname`, {}
+					@service, @hostname, @perfdatas = a[0]||o[:service], a[1]||o[:hostname]||`hostname`.chomp, {}
 					perfdatas = a[2]||o[:perfdatas]
 					perfdatas.each {|pd| @perfdatas[pd.to_sym] = pd }  if perfdatas
 					self
