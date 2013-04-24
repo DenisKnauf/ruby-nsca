@@ -58,8 +58,8 @@ class TestNSCACommunication < Test::Unit::TestCase
 				assert_equal test.retcode, packet.return_code
 			end
 			# original with B, but B is char 512 and will be replaced by \0
-			assert_equal pc0.status, "0123456789"*51+"A"
-			assert_equal pc1.status, "Should be OK | pd1_in_sec=3s,10,20,0,30 pd2_in_1=0.99961,0.99,0.98,0,1 pd3_count=2c,3,5,0,"
+			assert_equal "0123456789"*51+"A", pc0.status
+			assert_equal "Should be OK | 'pd1_in_sec'=3s,10,20,0,30 'pd2_in_1'=0.99961,0.99,0.98,0,1 'pd3_count'=2c,3,5,0,", pc1.status
 		end
 
 		should 'fail crc32 if wrong password' do
@@ -71,9 +71,7 @@ class TestNSCACommunication < Test::Unit::TestCase
 			server = Thread.new { NSCA.dummy_server Port, password: password }
 			sleep 1 # server needs time to start...
 			NSCA::send T3.new( 1, 'status', nil, timestamp)
-			assert_raise NSCA::Packet::CSC32CheckFailed do
-				server.join
-			end
+			assert_raise( NSCA::Packet::CSC32CheckFailed) { server.join }
 		end
 	end
 end

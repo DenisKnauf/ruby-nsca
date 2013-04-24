@@ -51,7 +51,7 @@ module NSCA
 			def min()  self.class.min  end
 			def max()  self.class.max  end
 			def to_a() [label, value, unit, warn, crit, min, max] end
-			def to_s() "#{label}=#{value}#{unit},#{warn},#{crit},#{min},#{max}" end
+			def to_s() "'#{label.gsub /[\n'\|]/, ''}'=#{value}#{unit},#{warn},#{crit},#{min},#{max}" end
 			def to_sym() self.class.to_sym end
 
 			def to_h
