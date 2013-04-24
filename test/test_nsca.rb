@@ -227,4 +227,18 @@ class TestNSCA::Check < Test::Unit::TestCase
 			assert_equal ce1_data, ce2_data
 		end
 	end
+
+	context 'Perfdatas in Checks' do
+		should 'be saved as symbol-key' do
+			PH = NSCA::PerformanceData.new 'simplename', :ms
+			CH = NSCA::Check.new 'a check with perfdata', 'hostname', [PH]
+			assert_equal PH, CH.perfdatas[:'simplename']
+			ch = CH.new
+			assert_equal nil, ch['simplename']
+			assert_equal nil,  ch[:simplename]
+			a = 0
+			ch.measure( 'simplename') { 0.upto( 10000) { a += 1 } }
+			assert_equal ch['simplename'], ch[:simplename]
+		end
+	end
 end

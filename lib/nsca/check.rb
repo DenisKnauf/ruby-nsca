@@ -107,7 +107,7 @@ module NSCA
 			end
 
 			def push *perfdatas
-				perfdatas.each {|perfdata| @perfdatas[perfdata.label] = perfdata }
+				perfdatas.each {|perfdata| @perfdatas[perfdata.label.to_sym] = perfdata }
 				@perfdatas
 			end
 
@@ -122,6 +122,7 @@ module NSCA
 
 			def []= perfdata_label, value
 				return push value  if value.is_a? PerformanceData::Base
+				perfdata_label = perfdata_label.to_sym
 				@perfdatas[perfdata_label] = perfdata_for( perfdata_label).new value
 			end
 
@@ -146,11 +147,7 @@ module NSCA
 			def determine_return_code
 				self.class.perfdatas.map do |label, pdc|
 					pd = @perfdatas[label]
-					if pd
-						pd.return_code
-					else
-						-1
-					end
+					pd ? pd.return_code : -1
 				end.max
 			end
 
