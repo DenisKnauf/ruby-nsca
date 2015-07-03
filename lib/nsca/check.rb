@@ -163,6 +163,11 @@ module NSCA
 				{timestamp: timestamp, return_code: retcode, hostname: hostname, server: service, status: text}
 			end
 
+			def to_packet version = nil
+				version ||= PacketV3
+				version.new timestamp, retcode, hostname, service, text
+			end
+
 			class <<self
 				attr_reader :service, :hostname, :perfdatas
 				def init *args

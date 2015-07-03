@@ -1,29 +1,4 @@
 module NSCA
-	class <<self
-		def xor key, msg, key_a = nil
-			key_a ||= key.unpack 'C*'
-			l = key_a.length
-			return msg  if l < 1
-			# Slice the message in parts of length key_a.length.
-			# XOR each char of a part with char at the same index in key_a.
-			msg.unpack( 'C*').each_with_index.map {|c,i| c^key_a[i%l] }.pack 'C*'
-		end
-
-		def crc32 msg
-			(msg.each_byte.inject 0xFFFFFFFF do |r,b|
-				8.times.inject( r^b) {|r,_i| (r>>1) ^ (0xEDB88320 * (r&1)) }
-			end) ^ 0xFFFFFFFF
-		end
-
-		# Builds a null terminated, null padded string of length maxlen
-		def str2cstr( str, maxlen = nil)
-			str = str.to_s
-			str = str.to_s[0..(maxlen-2)]  if maxlen
-			"#{str}\x00"
-		end
-		def cstr2str( str, maxlen = nil) str[ 0, x.index( ?\0) || ((maxlen||0)-1)]  end
-	end
-
 	class Packet
 		class CSC32CheckFailed <Exception
 		end
@@ -57,7 +32,7 @@ module NSCA
 		END_OF_TRANSMISSION = ?\x0a
 		HOSTNAME_LENGTH = 64
 		SERVICE_LENGTH = 128
-		STATUS_LENGTH = 512
+		PLUGIN_OUTPUT_LENGTH = 512
 
 		# these line describes the data package:
 		# typedef struct data_packet_struct{
@@ -71,41 +46,54 @@ module NSCA
 		#   char      plugin_output[MAX_PLUGINOUTPUT_LENGTH];
 		#   /* two extra padding-xx, too. */
 		# }data_packet;
-		PACK_STRING = "s> xx L> L> s> Z#{HOSTNAME_LENGTH} Z#{SERVICE_LENGTH} Z#{STATUS_LENGTH} xx"
-		PACK_LENGTH = 2+2+4+4+2+HOSTNAME_LENGTH+SERVICE_LENGTH+STATUS_LENGTH+2
+		PACK_STRING = "s> xx L> L> s> A#{HOSTNAME_LENGTH} A#{SERVICE_LENGTH} A#{PLUGIN_OUTPUT_LENGTH} xx"
+		PACK_LENGTH = 2+2+4+4+2+HOSTNAME_LENGTH+SERVICE_LENGTH+PLUGIN_OUTPUT_LENGTH+2
 		register_version PACKET_VERSION, self
 
 		# Builds a check-result-line for NSCA.
 		#
 		# Will be terminated by end-of-terminate.
-		def build key = nil, password = nil
+		def build slf = nil
+			cl = (slf || self).class
 			entry = [
-				PACKET_VERSION,
+				cl::PACKET_VERSION,
 				0, # crc32 (unknown yet)
 				(timestamp || Time.now).to_i,
 				return_code.to_i,
-				NSCA::str2cstr( hostname || `hostname -f`, HOSTNAME_LENGTH),
-				NSCA::str2cstr( service, SERVICE_LENGTH),
-				NSCA::str2cstr( status, STATUS_LENGTH) # incl perfdata
+				NSCA::str2cstr( hostname || `hostname -f`, cl::HOSTNAME_LENGTH),
+				NSCA::str2cstr( service, cl::SERVICE_LENGTH),
+				NSCA::str2cstr( status, cl::PLUGIN_OUTPUT_LENGTH) # incl perfdata
 			]
 			# generate crc32 and put it at entry[2...6]
-			entry[1] = NSCA::crc32 entry.pack( PACK_STRING)
-			entry = entry.pack PACK_STRING
-			entry = NSCA::xor key, entry  if key
-			entry = NSCA::xor password, entry  if password
+			entry[1] = NSCA::crc32 entry.pack( cl::PACK_STRING)
+			entry = entry.pack cl::PACK_STRING
 			entry
 		end
 
-		def self.parse entry, key = nil, password = nil, no_verification_checks = nil
-			entry = NSCA::xor key, entry  if key
-			entry = NSCA::xor password, entry  if password
+		def self.parse entry, no_verification_checks = nil
+			entry = entry.to_s.dup
 			ver, crc32sum, *x = entry.unpack( PACK_STRING)
+			x[2] = NSCA::cstr2str x[2]
+			x[3] = NSCA::cstr2str x[3]
+			x[4] = NSCA::cstr2str x[4]
 			raise VersionCheckFailed, "Packet version 3 expected. (recv: #{ver})" \
 				unless no_verification_checks or 3 == ver
 			entry[4..7] = ?\x00*4
-			raise CSC32CheckFailed, "crc32-check failed. packet seems to be broken." \
-				unless no_verification_checks or crc32sum == NSCA::crc32( entry)
+			crc32 = NSCA::crc32 entry
+			raise CSC32CheckFailed, "crc32-check failed. packet seems to be broken: #{crc32sum.inspect} != #{crc32.inspect}" \
+				unless no_verification_checks or crc32sum == crc32
 			new *x
 		end
+	end
+
+	class PacketV3__2_9 < PacketV3
+		NAGIOS_VERSION = 2.7
+		PACKET_VERSION = 3
+		END_OF_TRANSMISSION = ?\x0a
+		PLUGIN_OUTPUT_LENGTH = 4096
+		HOSTNAME_LENGTH = 64
+		SERVICE_LENGTH = 128
+		PACK_STRING = "s> xx L> L> s> A#{HOSTNAME_LENGTH} A#{SERVICE_LENGTH} A#{PLUGIN_OUTPUT_LENGTH} xx"
+		PACK_LENGTH = 2+2+4+4+2+HOSTNAME_LENGTH+SERVICE_LENGTH+PLUGIN_OUTPUT_LENGTH+2
 	end
 end

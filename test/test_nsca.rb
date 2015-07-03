@@ -18,20 +18,34 @@ end
 
 class TestNSCACommunication < Test::Unit::TestCase
 	Port = 5787
+	def dummy_server *args
+		server = Thread.new do
+			begin
+				NSCA.dummy_server *args
+			rescue Object
+				#STDERR.puts "#{$!.class}: #{$!}", $!.backtrace.map{|bt|"  #{bt}"}
+			 	raise
+		 	ensure
+				#STDERR.puts "Dummy Server Shutdown"
+			end
+		end
+		sleep 1 # server needs time to start...
+		server
+	end
 
 	include NSCA::Checks
 
 	context "our dummy test server on localhost:#{Port} with random password" do
 		should 'receive data' do
-			password = SecureRandom.random_bytes
+			password = 'password' || SecureRandom.random_bytes
 			timestamp = Time.now
 
 			PD1 = perfdata :pd1_in_sec, :s, 10, 20, 0, 30
 			PD2 = perfdata :pd2_in_1, 1, 0.99, 0.98, 0, 1
 			PD3 = perfdata :pd3_count, :c, 3, 5, 0
-			T0 = check 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
-			T1 = check 'TestNSCA1', 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2]
-			T2 = check :TestNSCA2, 'uxnags01-sbe.net.mobilkom.at', [PD1, PD2, PD3]
+			T0 = check 'TestNSCA0', 'localhost'
+			T1 = check 'TestNSCA1', 'localhost', [PD1, PD2]
+			T2 = check :TestNSCA2, 'localhost', [PD1, PD2, PD3]
 
 			checks = []
 			t0 = T0.new( 1, "0123456789"*51+"AB", nil, timestamp) # oversized service name
@@ -44,10 +58,9 @@ class TestNSCACommunication < Test::Unit::TestCase
 			checks << t1
 
 			NSCA::destinations.clear
-			NSCA::destinations << NSCA::Client.new( 'localhost', Port, password: password)
+			NSCA::destinations << NSCA::Client.new( 'localhost', Port, password)
 
-			server = Thread.new { NSCA.dummy_server Port, password: password }
-			sleep 1 # server needs time to start...
+			server = dummy_server port: Port, password: password
 			NSCA::send *checks
 			pc0, pc1 = server.value
 
@@ -57,20 +70,19 @@ class TestNSCACommunication < Test::Unit::TestCase
 				assert_equal timestamp.to_i, packet.timestamp.to_i
 				assert_equal test.retcode, packet.return_code
 			end
-			# original with B, but B is char 512 and will be replaced by \0
+			# original with AB, but B is char 512 and will be replaced by \0
 			assert_equal "0123456789"*51+"A", pc0.status
 			assert_equal "Should be OK | 'pd1_in_sec'=3s,10,20,0,30 'pd2_in_1'=0.99961,0.99,0.98,0,1 'pd3_count'=2c,3,5,0,", pc1.status
 		end
 
 		should 'fail crc32 if wrong password' do
-			password = SecureRandom.random_bytes
+			password = 'password' || SecureRandom.random_bytes
 			timestamp = Time.now
-			T3 = check 'TestNSCA0', 'uxnags01-sbe.net.mobilkom.at'
+			T3 = check 'TestNSCA0', 'localhost'
 			NSCA::destinations.clear
-			NSCA::destinations << NSCA::Client.new( 'localhost', Port, password: password+'a')
-			server = Thread.new { NSCA.dummy_server Port, password: password }
-			sleep 1 # server needs time to start...
-			NSCA::send T3.new( 1, 'status', nil, timestamp)
+			NSCA::destinations << NSCA::Client.new( 'localhost', Port, password+'a')
+			server = dummy_server hostname: 'localhost', port: Port, password: password
+			NSCA::send [T3.new( 1, 'status', nil, timestamp)]
 			assert_raise( NSCA::Packet::CSC32CheckFailed) { server.join }
 		end
 	end

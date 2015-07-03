@@ -2,12 +2,12 @@ module NSCA
 	class Server
 		include Enumerable
 
-		attr_reader :iv_key, :server, :packet_version, :password
+		attr_reader :iv_key, :server, :packet_version, :password, :xor_iv_key, :xor_password
 		def initialize *args
 			opts = {}
 			opts = args.pop.dup  if args.last.is_a? Hash
 			opts[:host] ||= opts[:hostname]
-			opts[:sock] ||= opts[:socket]
+			opts[:serv] ||= opts[:server]
 			opts[:pass] ||= opts[:password]
 
 			case args[0]
@@ -15,7 +15,7 @@ module NSCA
 				opts[:port] = args[0]
 				opts[:host] ||= args[1]
 			when IO
-				opts[:sock] = args[0]
+				opts[:serv] = args[0]
 			end
 
 			@packet_version = opts[:packet_version] || PacketV3
@@ -25,7 +25,7 @@ module NSCA
 			@server = if opts[:serv].is_a?( TCPServer) or opts[:serv].is_a?( UNIXServer)
 					opts[:serv]
 				elsif opts[:port].is_a? Integer
-					TCPServer.new *[opts[:port], opts[:host]].compact
+					TCPServer.new *[opts[:host], opts[:port]].compact
 				else
 					raise ArgumentError, "Server or port-number expected"
 				end
@@ -50,22 +50,36 @@ module NSCA
 				@packet_version = server.packet_version
 				@packet_length = @packet_version::PACK_LENGTH
 				@socket.write [@iv_key, Time.now.to_i].pack( 'a* L>')
+				@xor_password = NSCA::Helper.xor_stream @password 
+				@xor_iv_key = NSCA::Helper.xor_stream @iv_key
 			end
 
 			def fetch
-				data = read
-				@packet_version.parse data, @iv_key, @password  if data
+				iv_key = NSCA::Helper.xor_stream @iv_key
+				password = NSCA::Helper.xor_stream @password
+				packet_version = iv_key[ password[ read PacketV3::PACKET_VERSION]]
+				v = packet_version.unpack( 's>').first
+				case v
+				when 3
+					data = packet_version + iv_key[ password[ read( PacketV3::PACK_LENGTH - PacketV3::PACKET_VERSION)]]
+					begin
+						return PacketV3.parse( data)
+					rescue NSCA::Packet::CSC32CheckFailed
+						x = read( PacketV3__2_9::PACK_LENGTH - data.length)
+						raise  if x.nil?
+						return PacketV3__2_9.parse( data + iv_key[ password[ x]])
+					end
+				else raise "Unknown Version #{v.inspect}"
+				end
 			end
 
 			def each &block
 				return Enumerator.new( self)  unless block_given?
-				while data = fetch
-					yield data
-				end
+				yield fetch  until eof?
 			end
 
 			def eof?() @socket.eof? end
-			def read() @socket.read @packet_length end
+			def read( len = nil)  @socket.read( len || @packet_length) end
 			def close() @socket.close end
 		end
 	end

@@ -61,19 +61,26 @@ module NSCA
 			# @param [String(length<512)] status Status-line inclusive optional Performance Data.
 			def build_packet timestamp, return_code, hostname, service, status
 				packet = @packet_version.new timestamp || @timestamp, return_code, hostname, service, status
-				packet.build @iv_key, @password
+				packet.build
 			end
 
 			# Sends a check-result.
 			# @see #build_packet
-			def send_packet( *a)  @socket.write build_packet( *a)  end
+			def send_packet( *a)
+				packet = case a.first
+					when NSCA::Packet then a.first.build
+					when NSCA::Check::Base then a.first.to_packet( @packet_version).build
+					else build_packet( *a)
+					end
+				packet = NSCA::xor @iv_key, packet
+				packet = NSCA::xor @password, packet
+				@socket.write packet
+			end
 
 			# Sends check-results
 			# @param [Array<NSCA::Check::Base>] results
 			def send *results
-				results.flatten.each do |r|
-					send_packet r.timestamp, r.retcode, r.hostname, r.service, r.text
-				end
+				results.flatten.each &method(:send_packet)
 			end
 
 			# Closes connection to NSCA.
@@ -85,7 +92,7 @@ module NSCA
 			@hostname, @port, @password = hostname, port, password
 		end
 
-		def open( &e) Connection.open @hostname, @port, @password, &e end
+		def open( &e) Connection.open hostname: @hostname, port: @port, password: @password, &e end
 		def send( *results) open {|conn| conn.send results } end
 	end
 end
