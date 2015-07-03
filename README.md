@@ -10,6 +10,16 @@ First it was planed to provide a client-API, but now there is also a full server
 
 Tested against nsca-2.7, -2.9.
 
+Usage
+=====
+
+Simple sending
+
+```ruby
+NSCA.destinations << NSCA::Client.new('localhost')
+NSCA.send 'serverA', 'serviceA', 1, 'Ok'
+```
+
 TO DO AND DONE
 ==============
 
