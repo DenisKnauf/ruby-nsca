@@ -67,15 +67,18 @@ module NSCA
 		end
 
 		# Builds a null terminated, null padded string of length maxlen
-		def str2cstr( str, maxlen = nil)
+		def str2cstr str, maxlen = nil
 			str = str.to_s
 			str = str.to_s[0..(maxlen-2)]  if maxlen
 			"#{str}\x00"
 		end
-		def str2nstr( str, maxlen = nil)
-			str = str.to_s.gsub( ' ', "\x00")
+		def rand_padding( str, maxlen) str + SecureRandom.random_bytes( maxlen - str.length) end
+		def str2cstr_rand_padding( str, maxlen = nil) rand_padding str2cstr( str, maxlen), maxlen end
+		def str2nstr str, maxlen = nil
+			str = str.to_s.gsub ' ', "\x00"
 			"#{str} "
 		end
+		def str2nstr_rand_padding( str, maxlen = nil) rand_padding str2nstr( str, maxlen), maxlen end
 		def cstr2str( str, maxlen = nil)  str[ 0, str.index( ?\0) || ((maxlen||str.length+1)-1)]  end
 		def nstr2str( str, maxlen = nil)  str[ 0, str.index( ' ') || ((maxlen||str.length+1)-1)].gsub( "\x00", ' ')  end
 	end

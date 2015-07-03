@@ -60,9 +60,9 @@ module NSCA
 				0, # crc32 (unknown yet)
 				(timestamp || Time.now).to_i,
 				return_code.to_i,
-				NSCA::str2cstr( hostname || `hostname -f`, cl::HOSTNAME_LENGTH),
-				NSCA::str2cstr( service, cl::SERVICE_LENGTH),
-				NSCA::str2cstr( status, cl::PLUGIN_OUTPUT_LENGTH) # incl perfdata
+				NSCA::str2cstr_rand_padding( hostname || `hostname -f`, cl::HOSTNAME_LENGTH),
+				NSCA::str2cstr_rand_padding( service, cl::SERVICE_LENGTH),
+				NSCA::str2cstr_rand_padding( status, cl::PLUGIN_OUTPUT_LENGTH) # incl perfdata
 			]
 			# generate crc32 and put it at entry[2...6]
 			entry[1] = NSCA::crc32 entry.pack( cl::PACK_STRING)
