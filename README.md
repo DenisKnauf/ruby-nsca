@@ -34,5 +34,5 @@ DONE
 Copyright
 =========
 
-Copyright (c) 2013 Denis Knauf. See LICENSE.txt for
+Copyright (c) 2013-2015 Denis Knauf. See LICENSE.txt for
 further details.
