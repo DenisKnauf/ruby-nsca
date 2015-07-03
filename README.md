@@ -8,7 +8,7 @@ This is a ruby-pure implementation.
 
 First it was planed to provide a client-API, but now there is also a full server-API.
 
-Tested against nsca-2.7.
+Tested against nsca-2.7, -2.9.
 
 TO DO AND DONE
 ==============
@@ -34,5 +34,4 @@ DONE
 Copyright
 =========
 
-Copyright (c) 2013-2015 Denis Knauf. See LICENSE.txt for
-further details.
+Copyright (c) 2013-2015 Denis Knauf. See [[LICENSE.txt]] for further details.
